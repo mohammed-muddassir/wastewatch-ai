@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}WasteWatch AI - {{ blog.headline | truncate_text(50) }}{% endblock %}
+{% block page_title %}Blog Post Details{% endblock %}
+
+{% block content %}
+<div class="blog-detail">
+    <div class="blog-detail-header">
+        <div class="blog-detail-meta">
+            <span
+                class="badge badge-{{ 'success' if blog.status == 'published' else ('info' if blog.status == 'ready' else 'default') }} badge-lg">
+                {{ blog.status | capitalize }}
+            </span>
+            <span class="blog-detail-date">Created: {{ blog.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+        </div>
+        <h1 class="blog-detail-title">{{ blog.headline }}</h1>
+        {% if blog.meta_description %}
+        <p class="blog-detail-excerpt">{{ blog.meta_description }}</p>
+        {% endif %}
+    </div>
+
+    <div class="blog-detail-actions-bar">
+        <a href="/blog/{{ blog.id }}/preview" class="btn btn-primary btn-sm" target="_blank" id="btn-preview-blog">
+            <i data-lucide="eye"></i> Preview
+        </a>
+        <button class="btn btn-accent btn-sm" id="btn-export-blog" onclick="exportBlog({{ blog.id }})">
+            <i data-lucide="download"></i> Export HTML
+        </button>
+        {% if wp_configured %}
+        <button class="btn btn-success btn-sm" id="btn-wp-publish" onclick="publishToWP({{ blog.id }})">
+            <i data-lucide="upload"></i> Publish to WordPress
+        </button>
+        {% endif %}
+        <button class="btn btn-danger btn-sm" id="btn-delete-blog" onclick="deleteBlog({{ blog.id }}, true)">
+            <i data-lucide="trash-2"></i> Delete
+        </button>
+    </div>
+
+    {% if blog.tags %}
+    <div class="blog-detail-tags">
+        <strong>Tags:</strong>
+        {% for tag in blog.tags.split(',') %}
+        <span class="tag-chip">{{ tag.strip() }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if article %}
+    <div class="source-info-card">
+        <h3><i data-lucide="link"></i> Source Article</h3>
+        <div class="source-details">
+            <a href="{{ article.url }}" target="_blank" class="source-title">{{ article.title }}</a>
+            <div class="source-meta">
+                <span>{{ article.source }}</span>
+                {% if article.published_date %}
+                <span>{{ article.published_date.strftime('%B %d, %Y') }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="blog-content-container">
+        <h2>Blog Content</h2>
+        <div class="blog-content-body">
+            {{ blog.content | safe }}
+        </div>
+    </div>
+
+    {% if blog.wordpress_url %}
+    <div class="wp-info-card">
+        <h3><i data-lucide="globe"></i> WordPress</h3>
+        <p>Post ID: {{ blog.wordpress_post_id }}</p>
+        <a href="{{ blog.wordpress_url }}" target="_blank" class="btn btn-ghost btn-sm">
+            <i data-lucide="external-link"></i> View on WordPress
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

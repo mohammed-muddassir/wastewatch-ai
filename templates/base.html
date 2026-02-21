@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WasteWatch AI{% endblock %}</title>
+    <meta name="description" content="AI-powered wastewater treatment news scraper and blog generator">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="droplets"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">WasteWatch</span>
+                    <span class="logo-subtitle">AI Pipeline</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}" id="nav-dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/articles" class="nav-item {% if request.path == '/articles' %}active{% endif %}"
+                id="nav-articles">
+                <i data-lucide="newspaper"></i>
+                <span>Articles</span>
+            </a>
+            <a href="/blogs" class="nav-item {% if request.path == '/blogs' %}active{% endif %}" id="nav-blogs">
+                <i data-lucide="file-text"></i>
+                <span>Blog Posts</span>
+            </a>
+            <a href="/settings" class="nav-item {% if request.path == '/settings' %}active{% endif %}"
+                id="nav-settings">
+                <i data-lucide="settings"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="status-indicators">
+                <div class="status-item" id="api-status">
+                    <div class="status-dot {% if has_api_key %}status-active{% else %}status-inactive{% endif %}"></div>
+                    <span>Perplexity API</span>
+                </div>
+                <div class="status-item" id="wp-status">
+                    <div class="status-dot {% if wp_configured %}status-active{% else %}status-inactive{% endif %}">
+                    </div>
+                    <span>WordPress</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()">
+                <i data-lucide="menu"></i>
+            </button>
+            <div class="topbar-left">
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="topbar-right">
+                <div class="scheduler-control">
+                    <button class="btn btn-sm {% if scheduler.running %}btn-danger{% else %}btn-primary{% endif %}"
+                        id="scheduler-toggle-btn" onclick="toggleScheduler()">
+                        <i data-lucide="{% if scheduler.running %}pause{% else %}play{% endif %}"></i>
+                        <span>{% if scheduler.running %}Stop Auto{% else %}Start Auto{% endif %}</span>
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-accent" id="scrape-now-btn" onclick="scrapeNow()">
+                    <i data-lucide="search"></i>
+                    <span>Scrape Now</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

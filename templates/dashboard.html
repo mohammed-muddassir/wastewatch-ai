@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}WasteWatch AI - Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card" id="stat-articles">
+        <div class="stat-icon stat-icon-blue">
+            <i data-lucide="newspaper"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="stat-total-articles">{{ stats.total_articles }}</span>
+            <span class="stat-label">Articles Scraped</span>
+        </div>
+    </div>
+
+    <div class="stat-card" id="stat-unprocessed">
+        <div class="stat-icon stat-icon-amber">
+            <i data-lucide="clock"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="stat-unprocessed-count">{{ stats.unprocessed }}</span>
+            <span class="stat-label">Awaiting Processing</span>
+        </div>
+    </div>
+
+    <div class="stat-card" id="stat-blogs">
+        <div class="stat-icon stat-icon-green">
+            <i data-lucide="file-text"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="stat-total-blogs">{{ stats.total_blogs }}</span>
+            <span class="stat-label">Blog Posts Generated</span>
+        </div>
+    </div>
+
+    <div class="stat-card" id="stat-published">
+        <div class="stat-icon stat-icon-purple">
+            <i data-lucide="send"></i>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value" id="stat-published-count">{{ stats.published }}</span>
+            <span class="stat-label">Published to WordPress</span>
+        </div>
+    </div>
+</div>
+
+<!-- Action Panels Row -->
+<div class="panels-grid">
+    <!-- Pipeline Controls -->
+    <div class="panel" id="pipeline-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i data-lucide="zap"></i>
+                Pipeline Controls
+            </h2>
+        </div>
+        <div class="panel-body">
+            <div class="pipeline-steps">
+                <div class="pipeline-step">
+                    <div class="step-number">1</div>
+                    <div class="step-info">
+                        <h3>Scrape News</h3>
+                        <p>Search RSS feeds, Google News & Bing News</p>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="btn-scrape" onclick="scrapeNow()">
+                        <i data-lucide="search"></i> Run
+                    </button>
+                </div>
+                <div class="pipeline-connector">
+                    <i data-lucide="arrow-down"></i>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">2</div>
+                    <div class="step-info">
+                        <h3>Generate Blogs</h3>
+                        <p>Use AI to write blog posts from articles</p>
+                    </div>
+                    <button class="btn btn-accent btn-sm" id="btn-generate" onclick="generateBlogs()">
+                        <i data-lucide="sparkles"></i> Run
+                    </button>
+                </div>
+                <div class="pipeline-connector">
+                    <i data-lucide="arrow-down"></i>
+                </div>
+                <div class="pipeline-step">
+                    <div class="step-number">3</div>
+                    <div class="step-info">
+                        <h3>Publish Drafts</h3>
+                        <p>Send blog posts to WordPress as drafts</p>
+                    </div>
+                    <button class="btn btn-success btn-sm" id="btn-publish-all" {% if not wp_configured %}disabled
+                        title="Configure WordPress in Settings first" {% endif %} onclick="publishAll()">
+                        <i data-lucide="upload"></i> Run
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Prompt Section -->
+            <div class="prompt-section">
+                <div class="prompt-toggle" onclick="togglePromptSection()" id="prompt-toggle">
+                    <i data-lucide="chevron-down"></i>
+                    <span>Custom Blog Prompt (optional)</span>
+                </div>
+                <div class="prompt-body" id="prompt-body">
+                    <textarea id="dashboard-custom-prompt" class="form-textarea" rows="8"
+                        placeholder="Override the default prompt for this generation run. Leave empty to use the saved prompt from Settings.&#10;&#10;Available variables: {title}, {source}, {date}, {summary}, {content}"></textarea>
+                </div>
+            </div>
+
+            <div class="pipeline-divider"></div>
+
+            <button class="btn btn-gradient btn-full" id="btn-run-all" onclick="runFullPipeline()">
+                <i data-lucide="play-circle"></i>
+                Run Full Pipeline
+            </button>
+        </div>
+    </div>
+
+    <!-- Scheduler Status -->
+    <div class="panel" id="scheduler-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i data-lucide="timer"></i>
+                Automation Status
+            </h2>
+        </div>
+        <div class="panel-body">
+            <div class="automation-status">
+                <div class="auto-status-main">
+                    <div class="auto-status-indicator {% if scheduler.running %}auto-active{% else %}auto-inactive{% endif %}"
+                        id="auto-indicator">
+                        <div class="pulse-ring"></div>
+                        <i data-lucide="{% if scheduler.running %}activity{% else %}pause-circle{% endif %}"></i>
+                    </div>
+                    <div class="auto-status-text">
+                        <h3 id="auto-status-label">{% if scheduler.running %}Active{% else %}Paused{% endif %}</h3>
+                        <p id="auto-next-run">
+                            {% if scheduler.next_run %}
+                            Next run: {{ scheduler.next_run }}
+                            {% else %}
+                            Automation is paused
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="auto-config">
+                    <div class="config-item">
+                        <span class="config-label">Interval</span>
+                        <span class="config-value">Every {{ scheduler.interval or '60 minutes' }}</span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Auto-Generate</span>
+                        <span
+                            class="config-value config-badge {% if has_api_key %}badge-active{% else %}badge-inactive{% endif %}">
+                            {% if has_api_key %}Enabled{% else %}No API Key{% endif %}
+                        </span>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Auto-Publish</span>
+                        <span
+                            class="config-value config-badge {% if wp_configured %}badge-active{% else %}badge-inactive{% endif %}">
+                            {% if wp_configured %}Enabled{% else %}Not Configured{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity Panels -->
+<div class="panels-grid">
+    <!-- Recent Articles -->
+    <div class="panel" id="recent-articles-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i data-lucide="newspaper"></i>
+                Recent Articles
+            </h2>
+            <a href="/articles" class="panel-action">View All →</a>
+        </div>
+        <div class="panel-body panel-body-flush">
+            {% if recent_articles %}
+            <div class="item-list">
+                {% for article in recent_articles %}
+                <div class="item-row" id="article-row-{{ article.id }}">
+                    <div class="item-content">
+                        <div class="item-source">{{ article.source }}</div>
+                        <a href="{{ article.url }}" target="_blank" class="item-title">{{ article.title |
+                            truncate_text(80) }}</a>
+                        <div class="item-meta">
+                            <span><i data-lucide="clock" class="icon-xs"></i> {{ article.scraped_at | timeago }}</span>
+                            {% if article.blog_generated %}
+                            <span class="badge badge-success">Blog Generated</span>
+                            {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        {% if not article.blog_generated %}
+                        <button class="btn btn-ghost btn-xs" onclick="generateSingle({{ article.id }})"
+                            title="Generate blog post">
+                            <i data-lucide="sparkles"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i data-lucide="inbox"></i>
+                <p>No articles yet. Click "Scrape Now" to fetch news!</p>
+                <button class="btn btn-primary btn-sm" onclick="seedDemo()">
+                    <i data-lucide="database"></i> Load Demo Data
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Blog Posts -->
+    <div class="panel" id="recent-blogs-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">
+                <i data-lucide="file-text"></i>
+                Recent Blog Posts
+            </h2>
+            <a href="/blogs" class="panel-action">View All →</a>
+        </div>
+        <div class="panel-body panel-body-flush">
+            {% if recent_blogs %}
+            <div class="item-list">
+                {% for blog in recent_blogs %}
+                <div class="item-row" id="blog-row-{{ blog.id }}">
+                    <div class="item-content">
+                        <a href="/blog/{{ blog.id }}" class="item-title">{{ blog.headline | truncate_text(80) }}</a>
+                        <div class="item-meta">
+                            <span><i data-lucide="clock" class="icon-xs"></i> {{ blog.created_at | timeago }}</span>
+                            <span
+                                class="badge badge-{{ 'success' if blog.status == 'published' else ('info' if blog.status == 'ready' else 'default') }}">
+                                {{ blog.status | capitalize }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <a href="/blog/{{ blog.id }}/preview" class="btn btn-ghost btn-xs" title="Preview"
+                            target="_blank">
+                            <i data-lucide="eye"></i>
+                        </a>
+                        <button class="btn btn-ghost btn-xs" onclick="exportBlog({{ blog.id }})" title="Export HTML">
+                            <i data-lucide="download"></i>
+                        </button>
+                        {% if wp_configured %}
+                        <button class="btn btn-ghost btn-xs" onclick="publishToWP({{ blog.id }})"
+                            title="Publish to WordPress">
+                            <i data-lucide="upload"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i data-lucide="edit-3"></i>
+                <p>No blog posts generated yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Activity Log -->
+<div class="panel" id="activity-log-panel">
+    <div class="panel-header">
+        <h2 class="panel-title">
+            <i data-lucide="activity"></i>
+            Activity Log
+        </h2>
+    </div>
+    <div class="panel-body panel-body-flush">
+        {% if recent_logs %}
+        <div class="log-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Articles Found</th>
+                        <th>New Articles</th>
+                        <th>Blogs Generated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td>{{ log.run_at | timeago }}</td>
+                        <td>
+                            <span
+                                class="badge badge-{{ 'success' if log.status == 'success' else ('warning' if log.status == 'partial' else 'danger') }}">
+                                {{ log.status | capitalize }}
+                            </span>
+                        </td>
+                        <td>{{ log.articles_found }}</td>
+                        <td>{{ log.articles_new }}</td>
+                        <td>{{ log.blogs_generated }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i data-lucide="list"></i>
+            <p>No activity logs yet. Run the pipeline to see results here.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

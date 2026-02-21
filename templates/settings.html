@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}WasteWatch AI - Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<form id="settings-form" class="settings-page">
+
+    <!-- API Configuration -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i data-lucide="key"></i> API Configuration</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="perplexity_api_key">Perplexity API Key</label>
+                <div class="input-with-status">
+                    <input type="password" id="perplexity_api_key" name="PERPLEXITY_API_KEY"
+                        value="{{ settings.get('PERPLEXITY_API_KEY', '') }}" placeholder="pplx-xxxxxxxxxxxxxxxx"
+                        class="form-input">
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="togglePassword('perplexity_api_key')">
+                        <i data-lucide="eye"></i>
+                    </button>
+                </div>
+                <p class="form-hint">Get your API key from <a href="https://docs.perplexity.ai/"
+                        target="_blank">docs.perplexity.ai</a>. Leave blank to use demo mode.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- WordPress Configuration -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i data-lucide="globe"></i> WordPress Configuration</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="wordpress_url">WordPress Site URL</label>
+                <input type="url" id="wordpress_url" name="WORDPRESS_URL"
+                    value="{{ settings.get('WORDPRESS_URL', '') }}" placeholder="https://your-site.com"
+                    class="form-input">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="wordpress_username">Username</label>
+                    <input type="text" id="wordpress_username" name="WORDPRESS_USERNAME"
+                        value="{{ settings.get('WORDPRESS_USERNAME', '') }}" placeholder="admin" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="wordpress_app_password">Application Password</label>
+                    <div class="input-with-status">
+                        <input type="password" id="wordpress_app_password" name="WORDPRESS_APP_PASSWORD"
+                            value="{{ settings.get('WORDPRESS_APP_PASSWORD', '') }}" placeholder="xxxx xxxx xxxx xxxx"
+                            class="form-input">
+                        <button type="button" class="btn btn-sm btn-ghost"
+                            onclick="togglePassword('wordpress_app_password')">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="form-hint">WordPress Admin → Users → Profile → Application Passwords. Create one named "WasteWatch
+                AI".</p>
+
+            <button type="button" class="btn btn-outline" onclick="testWordPress()">
+                <i data-lucide="wifi"></i> <span>Test Connection</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Blog Prompt Template -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i data-lucide="file-text"></i> Blog Generation Prompt</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="blog_prompt">Custom Prompt Template</label>
+                <textarea id="blog_prompt" name="BLOG_PROMPT_TEMPLATE" class="form-textarea" rows="14"
+                    placeholder="Enter your custom blog generation prompt...">{{ settings.get('BLOG_PROMPT_TEMPLATE', default_prompt) }}</textarea>
+                <p class="form-hint">
+                    Available variables: <code>{title}</code>, <code>{source}</code>, <code>{date}</code>,
+                    <code>{summary}</code>, <code>{content}</code>.
+                    Leave empty to use the built-in default.
+                </p>
+            </div>
+            <button type="button" class="btn btn-outline" onclick="resetPrompt()">
+                <i data-lucide="rotate-ccw"></i> <span>Reset to Default</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scraping Settings -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i data-lucide="settings"></i> Scraping & Automation</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="scrape_interval">Scrape Interval (minutes)</label>
+                    <input type="number" id="scrape_interval" name="SCRAPE_INTERVAL_MINUTES"
+                        value="{{ settings.get('SCRAPE_INTERVAL_MINUTES', '60') }}" min="15" max="1440"
+                        class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="max_articles">Max Articles Per Run</label>
+                    <input type="number" id="max_articles" name="MAX_ARTICLES_PER_RUN"
+                        value="{{ settings.get('MAX_ARTICLES_PER_RUN', '10') }}" min="1" max="50" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" name="AUTO_GENERATE_BLOGS" {{ 'checked' if
+                            settings.get('AUTO_GENERATE_BLOGS', 'true' )=='true' }}>
+                        <span class="toggle-switch"></span>
+                        Auto-generate blogs after scraping
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" name="AUTO_PUBLISH_DRAFTS" {{ 'checked' if
+                            settings.get('AUTO_PUBLISH_DRAFTS', 'false' )=='true' }}>
+                        <span class="toggle-switch"></span>
+                        Auto-publish drafts to WordPress
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="settings-actions">
+        <button type="submit" class="btn btn-primary btn-lg" id="save-settings-btn">
+            <i data-lucide="save"></i> <span>Save Settings</span>
+        </button>
+    </div>
+
+</form>
+
+<script>
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function resetPrompt() {
+        if (confirm('Reset the blog prompt to the built-in default?')) {
+            document.getElementById('blog_prompt').value = {{ default_prompt | tojson }};
+            showToast('Prompt reset to default. Click Save to apply.', 'info');
+        }
+    }
+
+    async function testWordPress() {
+        showToast('Testing WordPress connection...', 'info');
+        try {
+            // Save current values first
+            await saveSettings(false);
+            const result = await apiCall('/api/wordpress/test', 'POST');
+            if (result.success) {
+                showToast('✅ WordPress connection successful!', 'success');
+            } else {
+                showToast('❌ ' + (result.error || 'Connection failed'), 'error');
+            }
+        } catch (error) {
+            showToast('Connection failed: ' + error.message, 'error');
+        }
+    }
+
+    async function saveSettings(showNotification = true) {
+        const form = document.getElementById('settings-form');
+        const formData = new FormData(form);
+        const data = {};
+
+        // Handle text inputs
+        for (const [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+
+        // Handle checkboxes (unchecked ones don't appear in FormData)
+        const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            data[cb.name] = cb.checked ? 'true' : 'false';
+        });
+
+        try {
+            const result = await apiCall('/api/settings', 'POST', data);
+            if (result.success && showNotification) {
+                showToast('✅ Settings saved!', 'success');
+            }
+        } catch (error) {
+            if (showNotification) {
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        }
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveSettings();
+    });
+</script>
+{% endblock %}

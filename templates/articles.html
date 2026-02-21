@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}WasteWatch AI - Articles{% endblock %}
+{% block page_title %}Scraped Articles{% endblock %}
+
+{% block content %}
+<div class="page-actions">
+    <div class="page-info">
+        <span>{{ total }} articles found</span>
+    </div>
+    <div class="page-buttons">
+        <button class="btn btn-primary btn-sm" id="btn-scrape-articles" onclick="scrapeNow()">
+            <i data-lucide="search"></i> Scrape Now
+        </button>
+        <button class="btn btn-accent btn-sm" id="btn-generate-all-articles" onclick="generateBlogs()">
+            <i data-lucide="sparkles"></i> Generate All
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-body panel-body-flush">
+        {% if articles %}
+        <div class="responsive-table">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th>Source</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for article in articles %}
+                    <tr id="article-{{ article.id }}">
+                        <td>
+                            <a href="{{ article.url }}" target="_blank" class="article-link">
+                                {{ article.title | truncate_text(100) }}
+                            </a>
+                            {% if article.summary %}
+                            <div class="article-summary">{{ article.summary | truncate_text(150) }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="source-badge">{{ article.source }}</span></td>
+                        <td class="nowrap">{{ article.scraped_at | timeago }}</td>
+                        <td>
+                            {% if article.blog_generated %}
+                            <span class="badge badge-success">✓ Generated</span>
+                            {% else %}
+                            <span class="badge badge-warning">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions-cell">
+                            {% if not article.blog_generated %}
+                            <button class="btn btn-ghost btn-xs" onclick="generateSingle({{ article.id }})"
+                                title="Generate blog">
+                                <i data-lucide="sparkles"></i>
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-ghost btn-xs btn-danger-text"
+                                onclick="deleteArticle({{ article.id }})" title="Delete">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="/articles?page={{ page - 1 }}" class="btn btn-ghost btn-sm">← Previous</a>
+            {% endif %}
+            <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %} <a href="/articles?page={{ page + 1 }}" class="btn btn-ghost btn-sm">Next →</a>
+                {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state large">
+            <i data-lucide="newspaper"></i>
+            <h3>No Articles Yet</h3>
+            <p>Click "Scrape Now" to search for wastewater treatment news articles.</p>
+            <div class="empty-actions">
+                <button class="btn btn-primary" onclick="scrapeNow()">
+                    <i data-lucide="search"></i> Scrape Now
+                </button>
+                <button class="btn btn-ghost" onclick="seedDemo()">
+                    <i data-lucide="database"></i> Load Demo Data
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
